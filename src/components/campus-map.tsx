@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import type { FloorId, Pin } from "@/lib/types";
 import { riskDotClass, riskLabel } from "@/lib/risk";
-import { CAMPUS_ZONES, findZoneForPoint, UNMARKED_ZONE_LABEL } from "@/lib/campus-layout";
+import {
+  CAMPUS_ZONES,
+  findZoneForPoint,
+  isShsBuildingLabel,
+  UNMARKED_ZONE_LABEL,
+} from "@/lib/campus-layout";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -19,6 +24,18 @@ const BASE_WIDTH = 1040;
 const BASE_HEIGHT = 400;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 2.5;
+
+const shsZone = CAMPUS_ZONES.find((z) => z.id === SHS_ZONE_ID);
+
+function isInsideShsBounds(xPercent: number, yPercent: number) {
+  if (!shsZone) return false;
+  return (
+    xPercent >= shsZone.xPercent &&
+    xPercent <= shsZone.xPercent + shsZone.widthPercent &&
+    yPercent >= shsZone.yPercent &&
+    yPercent <= shsZone.yPercent + shsZone.heightPercent
+  );
+}
 
 interface CampusMapProps {
   pins: Pin[];
@@ -35,6 +52,17 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   const [activeShsFloor, setActiveShsFloor] = useState<FloorId>(1);
   const [zoom, setZoom] = useState(1);
   const pinchStateRef = useRef<{ startDistance: number; startZoom: number } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Render largest zones first so smaller sub-zones (stairs, CR, doors)
+  // paint on top instead of being covered by the building block.
+  const renderZones = useMemo(
+    () =>
+      [...CAMPUS_ZONES].sort(
+        (a, b) => b.widthPercent * b.heightPercent - a.widthPercent * a.heightPercent
+      ),
+    []
+  );
 
   const visiblePins = pins.filter((pin) => {
     if (pin.status !== "Approved") return false;
@@ -51,17 +79,18 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   function handleMapClick(e: React.MouseEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("[data-pin], [data-ui-overlay]")) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = contentRef.current?.getBoundingClientRect();
+    if (!rect) return;
     const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
     const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
     const zone = findZoneForPoint(xPercent, yPercent);
 
-    if (zone?.id === SHS_ZONE_ID) {
+    if (isInsideShsBounds(xPercent, yPercent)) {
       if (!shsPanelOpen) {
         setShsPanelOpen(true);
         return;
       }
-      onMapClick(xPercent, yPercent, zone.label, activeShsFloor);
+      onMapClick(xPercent, yPercent, zone?.label ?? shsZone!.label, activeShsFloor);
       return;
     }
 
@@ -94,8 +123,8 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative">
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="relative min-w-0">
         <div
           data-ui-overlay
           className="absolute top-2 right-2 z-20 flex gap-1 rounded-md border border-slate-700 bg-slate-900/95 p-1 shadow"
@@ -163,10 +192,11 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
           className="no-scrollbar relative h-[400px] w-[1040px] max-w-full cursor-crosshair overflow-auto rounded-lg ring-1 ring-inset ring-stone-400 bg-[#b8b2a1] touch-pan-x touch-pan-y"
         >
           <div
+            ref={contentRef}
             style={{ width: `${BASE_WIDTH * zoom}px`, height: `${BASE_HEIGHT * zoom}px` }}
             className="relative"
           >
-            {CAMPUS_ZONES.map((zone) => (
+            {renderZones.map((zone) => (
               <div
                 key={zone.id}
                 aria-hidden="true"
@@ -185,6 +215,26 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
                 {zone.label}
               </div>
             ))}
+
+            {/* decorative windows along the SHS building facade */}
+            {shsZone &&
+              [61, 68, 75, 82].map((x) => (
+                <div
+                  key={`window-${x}`}
+                  aria-hidden="true"
+                  style={{ left: `${x}%`, top: "52%", width: "3%", height: "5%" }}
+                  className="absolute rounded-[2px] border border-slate-700/60 bg-sky-100/70"
+                />
+              ))}
+
+            {/* decorative interior wall dividing the SHS building wings */}
+            {shsZone && (
+              <div
+                aria-hidden="true"
+                style={{ left: "77%", top: `${shsZone.yPercent}%`, width: "0.4%", height: `${shsZone.heightPercent}%` }}
+                className="absolute bg-black/25"
+              />
+            )}
 
             {/* decorative trees along the field's edge */}
             {[12, 18, 24, 30, 36].map((x) => (
@@ -223,7 +273,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {pin.building}
-                        {pin.building === "Senior High School Bldg." ? ` — Floor ${pin.floorId}` : ""}
+                        {isShsBuildingLabel(pin.building) ? ` — Floor ${pin.floorId}` : ""}
                       </p>
                       {!pin.synced && (
                         <p className="mt-1 text-xs font-medium text-amber-500">
@@ -246,6 +296,11 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
             ))}
           </div>
         </div>
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 right-0 h-[400px] w-8 rounded-r-lg bg-gradient-to-l from-[#8a8272]/70 to-transparent"
+        />
       </div>
     </div>
   );

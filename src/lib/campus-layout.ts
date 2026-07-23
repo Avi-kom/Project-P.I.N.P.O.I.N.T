@@ -25,6 +25,46 @@ export const CAMPUS_ZONES: CampusZone[] = [
     labelColor: "text-white",
   },
   {
+    id: "shs-stairs-a",
+    label: "Stairwell A",
+    xPercent: 59,
+    yPercent: 34,
+    widthPercent: 6,
+    heightPercent: 11,
+    color: "bg-slate-500",
+    labelColor: "text-white",
+  },
+  {
+    id: "shs-stairs-b",
+    label: "Stairwell B",
+    xPercent: 88.5,
+    yPercent: 34,
+    widthPercent: 6,
+    heightPercent: 11,
+    color: "bg-slate-500",
+    labelColor: "text-white",
+  },
+  {
+    id: "shs-cr",
+    label: "CR (Comfort Room)",
+    xPercent: 59,
+    yPercent: 76,
+    widthPercent: 8,
+    heightPercent: 9,
+    color: "bg-cyan-700/85",
+    labelColor: "text-white",
+  },
+  {
+    id: "shs-entrance",
+    label: "Main Entrance",
+    xPercent: 73,
+    yPercent: 86,
+    widthPercent: 7,
+    heightPercent: 5,
+    color: "bg-amber-800",
+    labelColor: "text-white",
+  },
+  {
     id: "shs-bldg",
     label: "Senior High School Bldg.",
     xPercent: 56.1,
@@ -99,4 +139,31 @@ export function findZoneForPoint(
       yPercent >= zone.yPercent &&
       yPercent <= zone.yPercent + zone.heightPercent
   );
+}
+
+const SHS_ZONE_ID = "shs-bldg";
+const shsZoneForLabels = CAMPUS_ZONES.find((z) => z.id === SHS_ZONE_ID);
+
+function isWithinZone(inner: CampusZone, outer: CampusZone) {
+  return (
+    inner.xPercent >= outer.xPercent &&
+    inner.xPercent + inner.widthPercent <= outer.xPercent + outer.widthPercent &&
+    inner.yPercent >= outer.yPercent &&
+    inner.yPercent + inner.heightPercent <= outer.yPercent + outer.heightPercent
+  );
+}
+
+// Building labels that live inside the Senior High School building (the
+// building itself plus any sub-zone — stairs, CR, entrance — fully
+// contained within it), used to decide whether a report shows a floor.
+export const SHS_BUILDING_LABELS = new Set(
+  shsZoneForLabels
+    ? CAMPUS_ZONES.filter(
+        (z) => z.id === shsZoneForLabels!.id || isWithinZone(z, shsZoneForLabels!)
+      ).map((z) => z.label)
+    : []
+);
+
+export function isShsBuildingLabel(label: string): boolean {
+  return SHS_BUILDING_LABELS.has(label);
 }

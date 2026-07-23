@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SiteHeader } from "@/components/site-header";
 import { usePins } from "@/lib/pins-context";
 import { riskLabel, riskBadgeClass } from "@/lib/risk";
+import { isShsBuildingLabel } from "@/lib/campus-layout";
 import { cn } from "@/lib/utils";
 
 const LEVELS = [1, 2, 3, "Fixed"] as const;
@@ -80,7 +81,7 @@ export default function ReportsOverviewPage() {
                   </Badge>
                   <span className="text-xs text-slate-400">
                     {pin.building}
-                    {pin.building === "Senior High School Bldg." ? ` — Floor ${pin.floorId}` : ""}
+                    {isShsBuildingLabel(pin.building) ? ` — Floor ${pin.floorId}` : ""}
                   </span>
                 </div>
                 <p className="text-sm text-slate-200">{pin.description}</p>

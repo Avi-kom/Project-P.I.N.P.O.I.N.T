@@ -13,9 +13,9 @@ interface SiteHeaderProps {
 }
 
 const NAV_LINKS = [
+  { href: "/my-reports", label: "My Reports" },
   { href: "/reports", label: "Reports Overview" },
   { href: "/editor", label: "Map Layout Editor" },
-  { href: "/admin", label: "Admin Panel" },
 ];
 
 export function SiteHeader({ activeHref }: SiteHeaderProps) {
