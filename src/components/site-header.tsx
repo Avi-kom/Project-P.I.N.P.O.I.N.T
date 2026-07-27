@@ -2,24 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { clearStudentProfile, getStudentProfile } from "@/lib/auth";
+import { getStudentProfile } from "@/lib/auth";
 
 interface SiteHeaderProps {
   activeHref?: string;
 }
 
 const NAV_LINKS = [
+  { href: "/", label: "Map" },
   { href: "/my-reports", label: "My Reports" },
   { href: "/reports", label: "Reports Overview" },
-  { href: "/editor", label: "Map Layout Editor" },
 ];
 
 export function SiteHeader({ activeHref }: SiteHeaderProps) {
-  const router = useRouter();
   const [name, setName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,20 +25,14 @@ export function SiteHeader({ activeHref }: SiteHeaderProps) {
     setName(getStudentProfile()?.name ?? null);
   }, []);
 
-  function handleSwitchAccount() {
-    clearStudentProfile();
-    router.push("/");
-    router.refresh();
-  }
-
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+      <Link href="/" className="flex items-center gap-3">
         <Logo className="[&_span]:text-white" />
         <span className="hidden text-sm text-slate-400 sm:inline">
           See it. Pin it. Solve it.
         </span>
-      </div>
+      </Link>
       <div className="flex flex-wrap items-center gap-2">
         <nav className="flex flex-wrap gap-2">
           {NAV_LINKS.map((link) => (
@@ -58,12 +50,7 @@ export function SiteHeader({ activeHref }: SiteHeaderProps) {
           ))}
         </nav>
         {name && (
-          <button
-            onClick={handleSwitchAccount}
-            className="text-xs text-slate-400 underline underline-offset-2 hover:text-slate-200"
-          >
-            Signed in as {name} · Switch account
-          </button>
+          <span className="text-xs text-slate-400">Signed in as {name}</span>
         )}
       </div>
     </header>

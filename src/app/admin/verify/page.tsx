@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Check, X } from "lucide-react";
 import { usePins } from "@/lib/pins-context";
 import { riskLabel, riskBadgeClass } from "@/lib/risk";
@@ -62,13 +61,11 @@ export default function VerifyReportsPage() {
                   {pendingPins.map((pin) => (
                     <TableRow key={pin.id} className="border-slate-800">
                       <TableCell>
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element -- source may be a data: URL */}
+                        <img
                           src={pin.photoUrl}
-                          alt="Issue photo"
-                          width={96}
-                          height={72}
-                          className="rounded-md border border-slate-700"
-                          unoptimized
+                          alt="Issue"
+                          className="h-[72px] w-24 rounded-md border border-slate-700 object-cover"
                         />
                       </TableCell>
                       <TableCell className="max-w-xs text-sm text-slate-200">
@@ -125,13 +122,11 @@ function VerifyCard({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-800 bg-[#0d152f]">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element -- source may be a data: URL */}
+      <img
         src={pin.photoUrl}
-        alt="Issue photo"
-        width={400}
-        height={300}
+        alt="Issue"
         className="h-40 w-full object-cover"
-        unoptimized
       />
       <div className="space-y-2 p-4">
         <div className="flex items-center justify-between gap-2">

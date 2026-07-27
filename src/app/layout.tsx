@@ -41,11 +41,11 @@ export default function RootLayout({
       lang="en"
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950">
+      <body className="flex h-[100dvh] flex-col overflow-hidden bg-slate-950">
         <RegisterServiceWorker />
         <PinsProvider>
           <OfflineBanner />
-          {children}
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         </PinsProvider>
       </body>
     </html>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -101,13 +100,11 @@ export default function AdminOverviewPage() {
             ) : (
               levelReports.map((pin) => (
                 <Card key={pin.id} className="overflow-hidden border-slate-800 bg-[#0d152f]">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element -- source may be a data: URL */}
+                  <img
                     src={pin.photoUrl}
-                    alt="Issue photo"
-                    width={400}
-                    height={300}
+                    alt="Issue"
                     className="h-40 w-full object-cover"
-                    unoptimized
                   />
                   <CardContent className="space-y-2 pt-4">
                     <div className="flex items-center justify-between">

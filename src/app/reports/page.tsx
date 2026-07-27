@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SiteHeader } from "@/components/site-header";
@@ -66,13 +65,11 @@ export default function ReportsOverviewPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((pin) => (
             <Card key={pin.id} className="overflow-hidden border-slate-800 bg-slate-900">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element -- source may be a data: URL */}
+              <img
                 src={pin.photoUrl}
-                alt="Issue photo"
-                width={400}
-                height={300}
+                alt="Issue"
                 className="h-40 w-full object-cover"
-                unoptimized
               />
               <CardContent className="space-y-2 pt-4">
                 <div className="flex items-center justify-between gap-2">

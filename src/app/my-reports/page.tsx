@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { Clock, Check, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -84,13 +83,11 @@ export default function MyReportsPage() {
               const StatusIcon = meta.icon;
               return (
                 <Card key={pin.id} className="overflow-hidden border-slate-800 bg-slate-900">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element -- source may be a data: URL */}
+                  <img
                     src={pin.photoUrl}
-                    alt="Issue photo"
-                    width={400}
-                    height={300}
+                    alt="Issue"
                     className="h-40 w-full object-cover"
-                    unoptimized
                   />
                   <CardContent className="space-y-2 pt-4">
                     <div

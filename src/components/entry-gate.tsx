@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, User, Users } from "lucide-react";
+import { Mail, User, Users, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-slate-950 p-8">
+    <div className="flex min-h-full items-center justify-center bg-slate-950 p-6 sm:p-8">
       <div className="w-full max-w-sm space-y-6 rounded-xl border border-slate-800 bg-slate-900 p-8 shadow-lg">
         <div className="flex flex-col items-center gap-3 text-center">
           <Logo size="lg" iconOnly />
@@ -78,9 +79,6 @@ export function EntryGate({ onComplete }: EntryGateProps) {
             <Button type="submit" className="w-full">
               Continue
             </Button>
-            <p className="text-center text-xs text-slate-500">
-              Staff emails are routed to the admin login automatically.
-            </p>
           </form>
         ) : (
           <form onSubmit={handleDetailsSubmit} className="space-y-4">
@@ -124,6 +122,16 @@ export function EntryGate({ onComplete }: EntryGateProps) {
             </Button>
           </form>
         )}
+
+        <div className="border-t border-slate-800 pt-4 text-center">
+          <Link
+            href="/admin/login"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-300"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Staff Login
+          </Link>
+        </div>
       </div>
     </div>
   );
