@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import type { FloorId, Pin } from "@/lib/types";
 import { riskDotClass, riskLabel } from "@/lib/risk";
@@ -9,20 +9,25 @@ import {
   findZoneForPoint,
   isShsBuildingLabel,
   UNMARKED_ZONE_LABEL,
+  BUILDING_IMAGE,
+  PARKING_IMAGE,
+  BUILDING_WIDTH_PERCENT,
+  CAMPUS_ASPECT,
+  MAP_BACKGROUND,
+  PARKING_TOP_PERCENT,
 } from "@/lib/campus-layout";
+import { MAP_ANNOTATIONS } from "@/lib/map-annotations";
+import { MapAnnotations } from "@/components/map-annotations";
 import { cn } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { MapDecorations } from "@/components/map-decorations";
 
 const SHS_ZONE_ID = "shs-bldg";
 const SHS_FLOORS: FloorId[] = [1, 2, 3, 4];
-const BASE_WIDTH = 1040;
-const BASE_HEIGHT = 400;
-const ASPECT = BASE_WIDTH / BASE_HEIGHT;
+const ASPECT = CAMPUS_ASPECT;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
@@ -82,14 +87,6 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   const contentH = fitH * zoom;
   const padX = Math.max(0, (size.w - contentW) / 2);
   const padY = Math.max(0, (size.h - contentH) / 2);
-
-  const renderZones = useMemo(
-    () =>
-      [...CAMPUS_ZONES].sort(
-        (a, b) => b.widthPercent * b.heightPercent - a.widthPercent * a.heightPercent
-      ),
-    []
-  );
 
   const visiblePins = pins.filter((pin) => {
     if (pin.status !== "Approved") return false;
@@ -155,7 +152,11 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   }
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-[#b8b2a1]">
+    <div
+      ref={containerRef}
+      style={{ backgroundColor: MAP_BACKGROUND }}
+      className="relative h-full w-full overflow-hidden"
+    >
       <div
         onClick={handleMapClick}
         onTouchStart={handleTouchStart}
@@ -169,9 +170,34 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
         <div
           ref={contentRef}
           style={{ width: `${contentW}px`, height: `${contentH}px` }}
-          className="relative"
+          className="relative flex"
         >
-          {renderZones.map((zone) => (
+          {/* The real blueprint — building on the left, parking on the right */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed-ratio static asset, no layout benefit from next/image */}
+          <img
+            src={BUILDING_IMAGE.src}
+            alt="Senior High School building floor plan"
+            draggable={false}
+            style={{ width: `${BUILDING_WIDTH_PERCENT}%` }}
+            className="pointer-events-none h-full select-none object-fill"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed-ratio static asset, no layout benefit from next/image */}
+          <img
+            src={PARKING_IMAGE.src}
+            alt="Parking yard plan"
+            draggable={false}
+            style={{
+              position: "absolute",
+              left: `${BUILDING_WIDTH_PERCENT}%`,
+              top: `${PARKING_TOP_PERCENT}%`,
+              height: `${100 - PARKING_TOP_PERCENT}%`,
+              width: "auto",
+            }}
+            className="pointer-events-none select-none"
+          />
+
+          {/* Translucent colour washes over each room (the blueprint shows through) */}
+          {CAMPUS_ZONES.filter((z) => z.id !== SHS_ZONE_ID).map((zone) => (
             <div
               key={zone.id}
               aria-hidden="true"
@@ -182,16 +208,14 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
                 height: `${zone.heightPercent}%`,
               }}
               className={cn(
-                "absolute flex items-center justify-center overflow-hidden border border-black/30 p-1 text-center text-sm leading-tight font-semibold shadow-md sm:text-base",
-                zone.color,
-                zone.labelColor
+                "pointer-events-none absolute mix-blend-multiply",
+                zone.color
               )}
-            >
-              {zone.label}
-            </div>
+            />
           ))}
 
-          <MapDecorations zones={CAMPUS_ZONES} />
+          {/* Freehand line edits (added / erased lines) drawn in the editor */}
+          <MapAnnotations strokes={MAP_ANNOTATIONS} />
 
           {visiblePins.map((pin) => (
             <Popover

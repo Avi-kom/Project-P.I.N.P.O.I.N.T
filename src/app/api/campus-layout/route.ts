@@ -36,10 +36,42 @@ function generateFileContents(zones: CampusZone[]): string {
   labelColor: string;
 }
 
-// Edit this list to match your real campus layout, or use the visual
-// editor at /editor — it writes this file for you.
-// x/y/width/height are percentages of the map canvas (0-100),
-// measured from the top-left corner.
+// The map is rendered from the real blueprint images with translucent colour
+// washes + tap-areas over them. This file was written by the visual editor at
+// /admin/editor. The two images sit side by side, scaled to a common height:
+// BUILDING on the left, PARKING on the right.
+export interface CampusImage {
+  src: string;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+export const MAP_BACKGROUND = "#d8c09a";
+
+export const PARKING_TOP_PERCENT = 17;
+
+export const BUILDING_IMAGE: CampusImage = {
+  src: "/map/building.png",
+  naturalWidth: 1536,
+  naturalHeight: 1024,
+};
+
+export const PARKING_IMAGE: CampusImage = {
+  src: "/map/parking.png",
+  naturalWidth: 620,
+  naturalHeight: 563,
+};
+
+const buildingUnit = BUILDING_IMAGE.naturalWidth / BUILDING_IMAGE.naturalHeight;
+const parkingUnit = PARKING_IMAGE.naturalWidth / PARKING_IMAGE.naturalHeight;
+const totalUnit = buildingUnit + parkingUnit;
+
+export const BUILDING_WIDTH_PERCENT = (buildingUnit / totalUnit) * 100;
+export const PARKING_WIDTH_PERCENT = (parkingUnit / totalUnit) * 100;
+export const CAMPUS_ASPECT = totalUnit;
+
+// Tap-areas over the blueprint (combined-canvas percentages). Specific rooms
+// come before the big containers; "shs-bldg" stays last as the fallback.
 export const CAMPUS_ZONES: CampusZone[] = [
 ${zoneEntries}
 ];
@@ -57,6 +89,30 @@ export function findZoneForPoint(
       yPercent >= zone.yPercent &&
       yPercent <= zone.yPercent + zone.heightPercent
   );
+}
+
+const SHS_ZONE_ID = "shs-bldg";
+const shsZoneForLabels = CAMPUS_ZONES.find((z) => z.id === SHS_ZONE_ID);
+
+function isWithinZone(inner: CampusZone, outer: CampusZone) {
+  return (
+    inner.xPercent >= outer.xPercent &&
+    inner.xPercent + inner.widthPercent <= outer.xPercent + outer.widthPercent &&
+    inner.yPercent >= outer.yPercent &&
+    inner.yPercent + inner.heightPercent <= outer.yPercent + outer.heightPercent
+  );
+}
+
+export const SHS_BUILDING_LABELS = new Set(
+  shsZoneForLabels
+    ? CAMPUS_ZONES.filter(
+        (z) => z.id === shsZoneForLabels!.id || isWithinZone(z, shsZoneForLabels!)
+      ).map((z) => z.label)
+    : []
+);
+
+export function isShsBuildingLabel(label: string): boolean {
+  return SHS_BUILDING_LABELS.has(label);
 }
 `;
 }
