@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import type { FloorId, Pin } from "@/lib/types";
 import { riskDotClass, riskLabel } from "@/lib/risk";
 import {
   CAMPUS_ZONES,
-  findZoneForPoint,
+  type CampusZone,
   isShsBuildingLabel,
   UNMARKED_ZONE_LABEL,
   BUILDING_IMAGE,
@@ -16,8 +16,9 @@ import {
   MAP_BACKGROUND,
   PARKING_TOP_PERCENT,
 } from "@/lib/campus-layout";
-import { MAP_ANNOTATIONS } from "@/lib/map-annotations";
+import { MAP_ANNOTATIONS, type MapStroke } from "@/lib/map-annotations";
 import { MapAnnotations } from "@/components/map-annotations";
+import { fetchMapConfig } from "@/lib/map-config-remote";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -31,15 +32,13 @@ const ASPECT = CAMPUS_ASPECT;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
-const shsZone = CAMPUS_ZONES.find((z) => z.id === SHS_ZONE_ID);
-
-function isInsideShsBounds(xPercent: number, yPercent: number) {
-  if (!shsZone) return false;
-  return (
-    xPercent >= shsZone.xPercent &&
-    xPercent <= shsZone.xPercent + shsZone.widthPercent &&
-    yPercent >= shsZone.yPercent &&
-    yPercent <= shsZone.yPercent + shsZone.heightPercent
+function findZone(zones: CampusZone[], xPercent: number, yPercent: number) {
+  return zones.find(
+    (z) =>
+      xPercent >= z.xPercent &&
+      xPercent <= z.xPercent + z.widthPercent &&
+      yPercent >= z.yPercent &&
+      yPercent <= z.yPercent + z.heightPercent
   );
 }
 
@@ -58,10 +57,27 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   const [activeShsFloor, setActiveShsFloor] = useState<FloorId>(1);
   const [zoom, setZoom] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [zones, setZones] = useState<CampusZone[]>(CAMPUS_ZONES);
+  const [strokes, setStrokes] = useState<MapStroke[]>(MAP_ANNOTATIONS);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const pinchStateRef = useRef<{ startDistance: number; startZoom: number } | null>(null);
+
+  const shsZone = useMemo(() => zones.find((z) => z.id === SHS_ZONE_ID), [zones]);
+
+  // Load the saved layout (tap-areas + line edits) from Supabase if present.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMapConfig().then((cfg) => {
+      if (cancelled || !cfg) return;
+      setZones(cfg.zones);
+      setStrokes(cfg.annotations);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -112,9 +128,16 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
     const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
     const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
     if (xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) return;
-    const zone = findZoneForPoint(xPercent, yPercent);
+    const zone = findZone(zones, xPercent, yPercent);
 
-    if (isInsideShsBounds(xPercent, yPercent)) {
+    const insideShs =
+      !!shsZone &&
+      xPercent >= shsZone.xPercent &&
+      xPercent <= shsZone.xPercent + shsZone.widthPercent &&
+      yPercent >= shsZone.yPercent &&
+      yPercent <= shsZone.yPercent + shsZone.heightPercent;
+
+    if (insideShs) {
       if (!shsPanelOpen) {
         setShsPanelOpen(true);
         return;
@@ -197,7 +220,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
           />
 
           {/* Translucent colour washes over each room (the blueprint shows through) */}
-          {CAMPUS_ZONES.filter((z) => z.id !== SHS_ZONE_ID).map((zone) => (
+          {zones.filter((z) => z.id !== SHS_ZONE_ID).map((zone) => (
             <div
               key={zone.id}
               aria-hidden="true"
@@ -215,7 +238,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
           ))}
 
           {/* Freehand line edits (added / erased lines) drawn in the editor */}
-          <MapAnnotations strokes={MAP_ANNOTATIONS} />
+          <MapAnnotations strokes={strokes} />
 
           {visiblePins.map((pin) => (
             <Popover

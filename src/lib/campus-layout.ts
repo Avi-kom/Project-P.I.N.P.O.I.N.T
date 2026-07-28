@@ -215,7 +215,7 @@ export const CAMPUS_ZONES: CampusZone[] = [
     yPercent: 17,
     widthPercent: 35.1,
     heightPercent: 82,
-    color: "bg-sky-500/15",
+    color: "bg-transparent",
     labelColor: "text-slate-900",
   },
   {

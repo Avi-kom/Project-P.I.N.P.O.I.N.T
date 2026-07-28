@@ -14,6 +14,8 @@ import {
 } from "@/lib/campus-layout";
 import { MAP_ANNOTATIONS, type MapStroke } from "@/lib/map-annotations";
 import { MapAnnotations } from "@/components/map-annotations";
+import { fetchMapConfig, saveMapConfig } from "@/lib/map-config-remote";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -65,6 +67,19 @@ export default function EditorPage() {
   const currentRef = useRef<MapStroke | null>(null);
 
   const selectedZone = zones.find((z) => z.id === selectedId) ?? null;
+
+  // Load any saved layout from Supabase (overrides the static file defaults).
+  useEffect(() => {
+    let cancelled = false;
+    fetchMapConfig().then((cfg) => {
+      if (cancelled || !cfg) return;
+      setZones(cfg.zones);
+      setStrokes(cfg.annotations);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function pointFromEvent(e: MouseEvent | React.MouseEvent) {
     const canvas = canvasRef.current;
@@ -210,6 +225,13 @@ export default function EditorPage() {
 
   async function handleSave() {
     setSaveState("saving");
+
+    // Primary store: Supabase (works on the deployed site).
+    const remoteOk = isSupabaseConfigured ? await saveMapConfig(zones, strokes) : false;
+
+    // Best-effort: also write the source files so local dev stays in sync.
+    // This fails silently on read-only hosts (e.g. Vercel) — that's expected.
+    let fileOk = false;
     try {
       const [a, b] = await Promise.all([
         fetch("/api/campus-layout", {
@@ -223,10 +245,15 @@ export default function EditorPage() {
           body: JSON.stringify({ strokes }),
         }),
       ]);
-      if (!a.ok || !b.ok) throw new Error("Save failed");
+      fileOk = a.ok && b.ok;
+    } catch {
+      fileOk = false;
+    }
+
+    if (remoteOk || fileOk) {
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
-    } catch {
+    } else {
       setSaveState("error");
     }
   }
