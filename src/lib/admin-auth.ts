@@ -1,7 +1,7 @@
 // Prototype-only access gate — not real authentication. The PIN is
 // checked entirely client-side, so treat this as a UX affordance, not
 // a security boundary.
-export const ADMIN_PIN = "1234";
+export const ADMIN_PIN = "0713";
 const SESSION_KEY = "pinpoint_admin_authed";
 
 export function isAdminAuthed(): boolean {

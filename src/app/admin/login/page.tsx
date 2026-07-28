@@ -63,8 +63,6 @@ export default function AdminLoginPage() {
         >
           Sign In
         </Button>
-
-        <p className="text-center text-xs text-slate-500">Prototype access code: 1234</p>
       </form>
     </div>
   );
