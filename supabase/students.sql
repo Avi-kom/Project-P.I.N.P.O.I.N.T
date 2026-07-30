@@ -6,7 +6,9 @@
 -- table is locked (no anon read/write) and the app only calls the SECURITY
 -- DEFINER functions below.
 
-create extension if not exists pgcrypto;
+-- On Supabase, pgcrypto lives in the "extensions" schema. The functions below
+-- include it in their search_path so crypt()/gen_salt() resolve.
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.students (
   email text primary key,
@@ -25,7 +27,7 @@ create or replace function public.student_exists(p_email text)
 returns boolean
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select exists (select 1 from public.students where email = lower(trim(p_email)));
 $$;
@@ -40,7 +42,7 @@ create or replace function public.register_student(
 returns text
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_email text := lower(trim(p_email));
@@ -60,7 +62,7 @@ create or replace function public.verify_student(p_email text, p_password text)
 returns table (name text, section text)
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select s.name, s.section
   from public.students s
