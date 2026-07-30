@@ -34,21 +34,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
 
-  const isLoginPage = pathname === "/admin/login";
   const isMapPage = pathname === "/admin/map";
 
   useEffect(() => {
-    if (isLoginPage) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- gate render on sessionStorage auth check, unavailable during SSR
-      setChecked(true);
-      return;
-    }
+    // Staff sign in through the normal entry page now (email + PIN), so an
+    // unauthenticated visit to any /admin route goes back there.
     if (!isAdminAuthed()) {
-      router.replace("/admin/login");
+      router.replace("/");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- gate render on sessionStorage auth check, unavailable during SSR
     setChecked(true);
-  }, [isLoginPage, router, pathname]);
+  }, [router, pathname]);
 
   // close the mobile drawer whenever the route changes
   useEffect(() => {
@@ -56,12 +53,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setMobileOpen(false);
   }, [pathname]);
 
-  if (isLoginPage) return <>{children}</>;
   if (!checked) return null;
 
   function handleSignOut() {
     setAdminAuthed(false);
-    router.push("/admin/login");
+    router.push("/");
   }
 
   return (

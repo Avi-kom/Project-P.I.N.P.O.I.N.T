@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Menu,
-  X,
-  ClipboardList,
-  LayoutGrid,
-  ShieldCheck,
-  BarChart3,
-} from "lucide-react";
+import { Menu, X, ClipboardList, LayoutGrid, BarChart3 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { FeedbackButton } from "@/components/feedback-button";
 import { getStudentProfile } from "@/lib/auth";
@@ -139,16 +132,6 @@ export function MapPanel({ pins }: { pins: Pin[] }) {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="border-t border-slate-800 p-3">
-          <Link
-            href="/admin/login"
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Staff Login
-          </Link>
         </div>
       </div>
     </>

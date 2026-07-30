@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, User, Users, ShieldCheck, Lock } from "lucide-react";
-import Link from "next/link";
+import { Mail, User, Users, Lock } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isAdminEmail, isValidEmail, setStudentProfile } from "@/lib/auth";
-import { studentExists, registerStudent, verifyStudent } from "@/lib/students";
+import { isValidEmail, setStudentProfile } from "@/lib/auth";
+import { registerStudent, verifyStudent } from "@/lib/students";
+import { isStaff, registerStaff } from "@/lib/staff-remote";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { ADMIN_PIN, setAdminAuthed } from "@/lib/admin-auth";
 
 interface EntryGateProps {
   onComplete: () => void;
 }
 
-// "email"    → enter email
-// "login"    → returning student, password only
-// "register" → new student, name + section + password
-// "details"  → legacy no-password fallback (used only when Supabase is off)
-type Step = "email" | "login" | "register" | "details";
+// One sign-in for everyone. Enter email, then a password:
+//  • the admin PIN → admin panel (and the email is saved as staff)
+//  • a staff email's own password → admin panel
+//  • a student's own password → the map
+// "register" creates a new student; "details" is the no-Supabase fallback.
+type Step = "email" | "password" | "register" | "details";
 
 const MIN_PASSWORD = 4;
 
@@ -36,48 +39,67 @@ export function EntryGate({ onComplete }: EntryGateProps) {
   const inputClass =
     "border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500";
 
-  function finish(profile: { email: string; name: string; section: string }) {
+  function finishStudent(profile: { email: string; name: string; section: string }) {
     setStudentProfile(profile);
     onComplete();
   }
 
-  async function handleEmailSubmit(e: React.FormEvent) {
+  function goAdmin() {
+    setAdminAuthed(true);
+    router.push("/admin");
+  }
+
+  function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidEmail(email)) {
       setError("Enter a valid email address.");
       return;
     }
     setError("");
-    if (isAdminEmail(email)) {
-      router.push("/admin/login");
-      return;
-    }
-    setBusy(true);
-    const res = await studentExists(email);
-    setBusy(false);
-    if (!res.ok) {
-      // Supabase not configured (local dev) — keep the old password-less flow.
-      setStep("details");
-      return;
-    }
-    setStep(res.exists ? "login" : "register");
+    setStep("password");
   }
 
-  async function handleLoginSubmit(e: React.FormEvent) {
+  async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!password) {
       setError("Enter your password.");
       return;
     }
     setError("");
-    setBusy(true);
-    const res = await verifyStudent(email, password);
-    setBusy(false);
-    if (res.ok) {
-      finish({ email: email.trim(), name: res.name, section: res.section });
+
+    // The PIN unlocks the admin panel from the normal sign-in.
+    if (password === ADMIN_PIN) {
+      setBusy(true);
+      await registerStaff(email.trim(), password);
+      setBusy(false);
+      goAdmin();
       return;
     }
-    setError(res.reason === "wrong" ? "Incorrect password." : "Couldn't reach the server. Try again.");
+
+    // Without Supabase (local dev) fall back to a password-less student profile.
+    if (!isSupabaseConfigured) {
+      setStep("details");
+      return;
+    }
+
+    setBusy(true);
+    const res = await verifyStudent(email, password);
+    if (res.ok) {
+      const staff = await isStaff(email);
+      setBusy(false);
+      if (staff) {
+        goAdmin();
+      } else {
+        finishStudent({ email: email.trim(), name: res.name, section: res.section });
+      }
+      return;
+    }
+    setBusy(false);
+    setError(
+      res.reason === "wrong"
+        ? "Incorrect password. New here? Create an account below."
+        : "Couldn't reach the server. Try again."
+    );
   }
 
   async function handleRegisterSubmit(e: React.FormEvent) {
@@ -99,11 +121,11 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     const res = await registerStudent(email.trim(), name.trim(), section.trim(), password);
     setBusy(false);
     if (res.ok) {
-      finish({ email: email.trim(), name: name.trim(), section: section.trim() });
+      finishStudent({ email: email.trim(), name: name.trim(), section: section.trim() });
       return;
     }
     if (res.reason === "exists") {
-      setStep("login");
+      setStep("password");
       setPassword("");
       setError("That email is already registered — enter your password.");
       return;
@@ -111,14 +133,21 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     setError("Couldn't create your account. Try again.");
   }
 
-  // Legacy fallback when Supabase isn't configured (no password).
+  // No-Supabase fallback (local dev): name + section, no password.
   function handleDetailsSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !section.trim()) {
       setError("Please fill in both fields.");
       return;
     }
-    finish({ email: email.trim(), name: name.trim(), section: section.trim() });
+    finishStudent({ email: email.trim(), name: name.trim(), section: section.trim() });
+  }
+
+  function backToEmail() {
+    setStep("email");
+    setPassword("");
+    setConfirm("");
+    setError("");
   }
 
   return (
@@ -152,16 +181,16 @@ export function EntryGate({ onComplete }: EntryGateProps) {
               </div>
               {error && <p className="text-xs text-red-400">{error}</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Checking…" : "Continue"}
+            <Button type="submit" className="w-full">
+              Continue
             </Button>
           </form>
         )}
 
-        {step === "login" && (
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
+        {step === "password" && (
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <p className="text-sm text-slate-400">
-              Welcome back — <span className="text-slate-200">{email}</span>
+              Signed in as <span className="text-slate-200">{email}</span>
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-200">Password</label>
@@ -184,24 +213,33 @@ export function EntryGate({ onComplete }: EntryGateProps) {
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Enter Campus Map"}
             </Button>
-            <button
-              type="button"
-              onClick={() => {
-                setStep("email");
-                setPassword("");
-                setError("");
-              }}
-              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
-            >
-              Use a different email
-            </button>
+            <div className="flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("register");
+                  setPassword("");
+                  setError("");
+                }}
+                className="text-amber-400 hover:text-amber-300"
+              >
+                New student? Create an account
+              </button>
+              <button
+                type="button"
+                onClick={backToEmail}
+                className="text-slate-500 hover:text-slate-300"
+              >
+                Change email
+              </button>
+            </div>
           </form>
         )}
 
         {step === "register" && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <p className="text-sm text-slate-400">
-              New here — <span className="text-slate-200">{email}</span>. Create your account.
+              Create your account — <span className="text-slate-200">{email}</span>
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-200">Full Name</label>
@@ -272,15 +310,10 @@ export function EntryGate({ onComplete }: EntryGateProps) {
             </Button>
             <button
               type="button"
-              onClick={() => {
-                setStep("email");
-                setPassword("");
-                setConfirm("");
-                setError("");
-              }}
+              onClick={backToEmail}
               className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
             >
-              Use a different email
+              Change email
             </button>
           </form>
         )}
@@ -327,16 +360,6 @@ export function EntryGate({ onComplete }: EntryGateProps) {
             </Button>
           </form>
         )}
-
-        <div className="border-t border-slate-800 pt-4 text-center">
-          <Link
-            href="/admin/login"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-300"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Staff Login
-          </Link>
-        </div>
       </div>
     </div>
   );

@@ -11,13 +11,6 @@ export interface StudentProfile {
 
 const PROFILE_KEY = "pinpoint_student_profile";
 
-// Edit this list to match your real staff/admin Gmail addresses.
-export const ADMIN_EMAILS = ["admin@pinpoint.edu", "pinpoint.admin@gmail.com"];
-
-export function isAdminEmail(email: string): boolean {
-  return ADMIN_EMAILS.includes(email.trim().toLowerCase());
-}
-
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
