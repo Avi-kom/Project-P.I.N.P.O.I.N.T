@@ -2,26 +2,46 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, User, Users, ShieldCheck } from "lucide-react";
+import { Mail, User, Users, ShieldCheck, Lock } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isAdminEmail, isValidEmail, setStudentProfile } from "@/lib/auth";
+import { studentExists, registerStudent, verifyStudent } from "@/lib/students";
 
 interface EntryGateProps {
   onComplete: () => void;
 }
 
+// "email"    → enter email
+// "login"    → returning student, password only
+// "register" → new student, name + section + password
+// "details"  → legacy no-password fallback (used only when Supabase is off)
+type Step = "email" | "login" | "register" | "details";
+
+const MIN_PASSWORD = 4;
+
 export function EntryGate({ onComplete }: EntryGateProps) {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "details">("email");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [section, setSection] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleEmailSubmit(e: React.FormEvent) {
+  const inputClass =
+    "border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500";
+
+  function finish(profile: { email: string; name: string; section: string }) {
+    setStudentProfile(profile);
+    onComplete();
+  }
+
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidEmail(email)) {
       setError("Enter a valid email address.");
@@ -32,17 +52,73 @@ export function EntryGate({ onComplete }: EntryGateProps) {
       router.push("/admin/login");
       return;
     }
-    setStep("details");
+    setBusy(true);
+    const res = await studentExists(email);
+    setBusy(false);
+    if (!res.ok) {
+      // Supabase not configured (local dev) — keep the old password-less flow.
+      setStep("details");
+      return;
+    }
+    setStep(res.exists ? "login" : "register");
   }
 
+  async function handleLoginSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    const res = await verifyStudent(email, password);
+    setBusy(false);
+    if (res.ok) {
+      finish({ email: email.trim(), name: res.name, section: res.section });
+      return;
+    }
+    setError(res.reason === "wrong" ? "Incorrect password." : "Couldn't reach the server. Try again.");
+  }
+
+  async function handleRegisterSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !section.trim()) {
+      setError("Please fill in your name and section.");
+      return;
+    }
+    if (password.length < MIN_PASSWORD) {
+      setError(`Password must be at least ${MIN_PASSWORD} characters.`);
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    const res = await registerStudent(email.trim(), name.trim(), section.trim(), password);
+    setBusy(false);
+    if (res.ok) {
+      finish({ email: email.trim(), name: name.trim(), section: section.trim() });
+      return;
+    }
+    if (res.reason === "exists") {
+      setStep("login");
+      setPassword("");
+      setError("That email is already registered — enter your password.");
+      return;
+    }
+    setError("Couldn't create your account. Try again.");
+  }
+
+  // Legacy fallback when Supabase isn't configured (no password).
   function handleDetailsSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !section.trim()) {
       setError("Please fill in both fields.");
       return;
     }
-    setStudentProfile({ email: email.trim(), name: name.trim(), section: section.trim() });
-    onComplete();
+    finish({ email: email.trim(), name: name.trim(), section: section.trim() });
   }
 
   return (
@@ -56,7 +132,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
           </div>
         </div>
 
-        {step === "email" ? (
+        {step === "email" && (
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-200">Email</label>
@@ -70,20 +146,62 @@ export function EntryGate({ onComplete }: EntryGateProps) {
                     setError("");
                   }}
                   placeholder="you@gmail.com"
-                  className="border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500"
+                  className={inputClass}
                   autoFocus
                 />
               </div>
               {error && <p className="text-xs text-red-400">{error}</p>}
             </div>
-            <Button type="submit" className="w-full">
-              Continue
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? "Checking…" : "Continue"}
             </Button>
           </form>
-        ) : (
-          <form onSubmit={handleDetailsSubmit} className="space-y-4">
+        )}
+
+        {step === "login" && (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
             <p className="text-sm text-slate-400">
-              Signed in as <span className="text-slate-200">{email}</span>
+              Welcome back — <span className="text-slate-200">{email}</span>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-200">Password</label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Your password"
+                  className={inputClass}
+                  autoFocus
+                />
+              </div>
+              {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? "Signing in…" : "Enter Campus Map"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("email");
+                setPassword("");
+                setError("");
+              }}
+              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
+            >
+              Use a different email
+            </button>
+          </form>
+        )}
+
+        {step === "register" && (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <p className="text-sm text-slate-400">
+              New here — <span className="text-slate-200">{email}</span>. Create your account.
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-200">Full Name</label>
@@ -96,7 +214,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
                     setError("");
                   }}
                   placeholder="Juan Dela Cruz"
-                  className="border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500"
+                  className={inputClass}
                   autoFocus
                 />
               </div>
@@ -112,7 +230,94 @@ export function EntryGate({ onComplete }: EntryGateProps) {
                     setError("");
                   }}
                   placeholder="Grade 11 - STEM A"
-                  className="border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-200">Password</label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Create a password"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-200">Confirm Password</label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => {
+                    setConfirm(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Re-enter your password"
+                  className={inputClass}
+                />
+              </div>
+              {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? "Creating…" : "Create account & enter"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("email");
+                setPassword("");
+                setConfirm("");
+                setError("");
+              }}
+              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
+            >
+              Use a different email
+            </button>
+          </form>
+        )}
+
+        {step === "details" && (
+          <form onSubmit={handleDetailsSubmit} className="space-y-4">
+            <p className="text-sm text-slate-400">
+              Signed in as <span className="text-slate-200">{email}</span>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-200">Full Name</label>
+              <div className="relative">
+                <User className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Juan Dela Cruz"
+                  className={inputClass}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-200">Grade & Section</label>
+              <div className="relative">
+                <Users className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  value={section}
+                  onChange={(e) => {
+                    setSection(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Grade 11 - STEM A"
+                  className={inputClass}
                 />
               </div>
               {error && <p className="text-xs text-red-400">{error}</p>}

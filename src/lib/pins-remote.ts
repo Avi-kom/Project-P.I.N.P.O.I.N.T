@@ -14,6 +14,8 @@ interface PinRow {
   reporter_name: string;
   reporter_section: string;
   reporter_email: string;
+  exact_location?: string | null;
+  created_at?: string;
 }
 
 function rowToPin(row: PinRow): Pin {
@@ -30,6 +32,8 @@ function rowToPin(row: PinRow): Pin {
     reporterName: row.reporter_name,
     reporterSection: row.reporter_section,
     reporterEmail: row.reporter_email,
+    exactLocation: row.exact_location ?? undefined,
+    createdAt: row.created_at,
     synced: true,
   };
 }
@@ -48,6 +52,7 @@ function pinToRow(pin: Pin): PinRow {
     reporter_name: pin.reporterName,
     reporter_section: pin.reporterSection,
     reporter_email: pin.reporterEmail,
+    exact_location: pin.exactLocation ?? null,
   };
 }
 

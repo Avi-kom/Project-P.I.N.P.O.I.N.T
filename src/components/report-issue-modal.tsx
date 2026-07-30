@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -43,6 +44,7 @@ export function ReportIssueModal({
 }: ReportIssueModalProps) {
   const [level, setLevel] = useState<"1" | "2" | "3">("1");
   const [description, setDescription] = useState("");
+  const [exactLocation, setExactLocation] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUploaded, setPhotoUploaded] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -70,6 +72,7 @@ export function ReportIssueModal({
   function resetForm() {
     setLevel("1");
     setDescription("");
+    setExactLocation("");
     setPhotoUrl(null);
     setPhotoUploaded(false);
     setUploading(false);
@@ -95,6 +98,8 @@ export function ReportIssueModal({
       reporterName: profile?.name ?? "Unknown",
       reporterSection: profile?.section ?? "Unknown",
       reporterEmail: profile?.email ?? "unknown",
+      exactLocation: exactLocation.trim() || undefined,
+      createdAt: new Date().toISOString(),
     };
 
     onSubmit(newPin);
@@ -142,6 +147,17 @@ export function ReportIssueModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the issue..."
               rows={4}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Exact location <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <Input
+              value={exactLocation}
+              onChange={(e) => setExactLocation(e.target.value)}
+              placeholder="e.g. near the back window, 3rd from the left"
             />
           </div>
 

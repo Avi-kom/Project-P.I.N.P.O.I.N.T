@@ -14,6 +14,14 @@ export const riskDotClass: Record<RiskLevel, string> = {
   Fixed: "bg-green-500 border-green-700",
 };
 
+// Fill colours for the teardrop map-pin markers on the campus map.
+export const riskPinColor: Record<RiskLevel, string> = {
+  1: "#3b82f6", // blue-500
+  2: "#f97316", // orange-500
+  3: "#ef4444", // red-500
+  Fixed: "#22c55e", // green-500
+};
+
 export const riskBadgeClass: Record<RiskLevel, string> = {
   1: "bg-blue-950/60 text-blue-300 border-blue-700/50",
   2: "bg-orange-950/60 text-orange-300 border-orange-700/50",

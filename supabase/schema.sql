@@ -13,8 +13,12 @@ create table if not exists public.pins (
   reporter_name text not null,
   reporter_section text not null,
   reporter_email text not null,
+  exact_location text,
   created_at timestamptz not null default now()
 );
+
+-- If the pins table already existed before this column was added, run this too:
+alter table public.pins add column if not exists exact_location text;
 
 alter table public.pins enable row level security;
 

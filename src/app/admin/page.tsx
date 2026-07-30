@@ -10,6 +10,16 @@ import { isShsBuildingLabel } from "@/lib/campus-layout";
 
 const LEVELS = [1, 2, 3] as const;
 
+function formatDate(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
+}
+
 export default function AdminOverviewPage() {
   const { pins } = usePins();
   const [activeLevel, setActiveLevel] = useState<1 | 2 | 3 | null>(null);
@@ -117,10 +127,21 @@ export default function AdminOverviewPage() {
                       </span>
                     </div>
                     <p className="text-sm text-slate-200">{pin.description}</p>
+                    {pin.exactLocation && (
+                      <p className="text-xs text-slate-400">
+                        <span className="text-slate-500">Exact spot: </span>
+                        {pin.exactLocation}
+                      </p>
+                    )}
                     <div className="border-t border-slate-800 pt-2 text-xs text-slate-400">
                       <p className="font-medium text-slate-300">{pin.reporterName}</p>
                       <p>{pin.reporterSection}</p>
                       <p className="truncate">{pin.reporterEmail}</p>
+                      {formatDate(pin.createdAt) && (
+                        <p className="mt-1 text-slate-500">
+                          Submitted {formatDate(pin.createdAt)}
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

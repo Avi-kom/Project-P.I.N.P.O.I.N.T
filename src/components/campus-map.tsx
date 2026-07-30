@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo, useLayoutEffect } from "react";
 import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import type { FloorId, Pin } from "@/lib/types";
-import { riskDotClass, riskLabel } from "@/lib/risk";
+import { riskPinColor, riskLabel } from "@/lib/risk";
 import {
   CAMPUS_ZONES,
   type CampusZone,
@@ -62,6 +62,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const pinchStateRef = useRef<{ startDistance: number; startZoom: number } | null>(null);
 
   const shsZone = useMemo(() => zones.find((z) => z.id === SHS_ZONE_ID), [zones]);
@@ -103,6 +104,17 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
   const contentH = fitH * zoom;
   const padX = Math.max(0, (size.w - contentW) / 2);
   const padY = Math.max(0, (size.h - contentH) / 2);
+
+  // Keep the map centered while zooming. The content is sized by width/height
+  // (not a CSS transform), so when it overflows the viewport we must re-center
+  // the scroll position ourselves — otherwise zooming pins content to the
+  // top-left and it "drifts" instead of expanding about the middle.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollLeft = Math.max(0, (contentW - size.w) / 2);
+    el.scrollTop = Math.max(0, (contentH - size.h) / 2);
+  }, [zoom, size.w, size.h, contentW, contentH]);
 
   const visiblePins = pins.filter((pin) => {
     if (pin.status !== "Approved") return false;
@@ -181,6 +193,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
       className="relative h-full w-full overflow-hidden"
     >
       <div
+        ref={scrollRef}
         onClick={handleMapClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -251,14 +264,39 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
                 onClick={(e) => e.stopPropagation()}
                 style={{ left: `${pin.xCoord}%`, top: `${pin.yCoord}%` }}
                 className={cn(
-                  "absolute z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow",
-                  riskDotClass[pin.level],
-                  !pin.synced && "ring-2 ring-amber-400 ring-offset-1 animate-pulse"
+                  "absolute z-10 -translate-x-1/2 -translate-y-full cursor-pointer",
+                  !pin.synced && "animate-pulse"
                 )}
                 aria-label={`${riskLabel[pin.level]} — ${pin.building}: ${pin.description}${
                   pin.synced ? "" : " (pending upload)"
                 }`}
-              />
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="28"
+                  height="28"
+                  className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.45)]"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                    fill={riskPinColor[pin.level]}
+                    stroke="rgba(0,0,0,0.35)"
+                    strokeWidth="1"
+                  />
+                  <circle cx="12" cy="9" r="2.6" fill="#ffffff" />
+                  {!pin.synced && (
+                    <circle
+                      cx="18.5"
+                      cy="5.5"
+                      r="3"
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                  )}
+                </svg>
+              </PopoverTrigger>
               <PopoverContent className="w-64" onClick={(e) => e.stopPropagation()}>
                 <div className="space-y-2">
                   <div>

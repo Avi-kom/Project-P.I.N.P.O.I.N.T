@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X, ClipboardList, LayoutGrid, ShieldCheck, User } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { FeedbackButton } from "@/components/feedback-button";
 import { getStudentProfile } from "@/lib/auth";
 
 interface NavLink {
@@ -59,6 +60,10 @@ export function MapNav() {
               </Link>
             );
           })}
+          <FeedbackButton
+            role="student"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          />
           {name && (
             <span className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-400">
               <User className="h-4 w-4" />
@@ -98,6 +103,12 @@ export function MapNav() {
                 </Link>
               );
             })}
+            <div onClick={() => setOpen(false)}>
+              <FeedbackButton
+                role="student"
+                className="w-full px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-800"
+              />
+            </div>
             <Link
               href="/admin/login"
               className="flex items-center gap-2 border-t border-slate-800 px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-800"

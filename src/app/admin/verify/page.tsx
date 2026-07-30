@@ -16,6 +16,16 @@ import {
 } from "@/components/ui/table";
 import type { Pin } from "@/lib/types";
 
+function formatDate(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
+}
+
 export default function VerifyReportsPage() {
   const { pins, setPinStatus } = usePins();
   const pendingPins = pins.filter((p) => p.status === "Pending");
@@ -75,8 +85,18 @@ export default function VerifyReportsPage() {
                         <p className="font-medium">{pin.reporterName}</p>
                         <p className="text-xs text-slate-500">{pin.reporterSection}</p>
                         <p className="text-xs text-slate-500">{pin.reporterEmail}</p>
+                        {formatDate(pin.createdAt) && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Submitted {formatDate(pin.createdAt)}
+                          </p>
+                        )}
                       </TableCell>
-                      <TableCell className="text-sm text-slate-300">{pin.building}</TableCell>
+                      <TableCell className="text-sm text-slate-300">
+                        {pin.building}
+                        {pin.exactLocation && (
+                          <p className="text-xs text-slate-500">{pin.exactLocation}</p>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={riskBadgeClass[pin.level]}>
                           {riskLabel[pin.level]}
@@ -139,10 +159,19 @@ function VerifyCard({
           </span>
         </div>
         <p className="text-sm text-slate-200">{pin.description}</p>
+        {pin.exactLocation && (
+          <p className="text-xs text-slate-400">
+            <span className="text-slate-500">Exact spot: </span>
+            {pin.exactLocation}
+          </p>
+        )}
         <div className="border-t border-slate-800 pt-2 text-xs text-slate-400">
           <p className="font-medium text-slate-300">{pin.reporterName}</p>
           <p>{pin.reporterSection}</p>
           <p>{pin.reporterEmail}</p>
+          {formatDate(pin.createdAt) && (
+            <p className="mt-1 text-slate-500">Submitted {formatDate(pin.createdAt)}</p>
+          )}
         </div>
         <div className="flex gap-2 pt-1">
           <Button

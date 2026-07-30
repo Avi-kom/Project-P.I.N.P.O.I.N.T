@@ -5,7 +5,6 @@ import { CampusMap } from "@/components/campus-map";
 import { ReportIssueModal } from "@/components/report-issue-modal";
 import { MapNav } from "@/components/map-nav";
 import { MapSummary } from "@/components/map-summary";
-import { FeedbackButton } from "@/components/feedback-button";
 import { usePins } from "@/lib/pins-context";
 import type { FloorId } from "@/lib/types";
 
@@ -28,12 +27,6 @@ export function CampusView() {
       <CampusMap pins={pins} onMapClick={handleMapClick} />
       <MapNav />
       <MapSummary pins={pins} />
-
-      {/* Feedback — floating, above the zoom controls */}
-      <FeedbackButton
-        role="student"
-        className="pointer-events-auto absolute right-3 bottom-40 z-20 rounded-lg border border-slate-700 bg-slate-900/95 px-3 py-2 text-sm font-medium text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800"
-      />
 
       {/* hint */}
       <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-300 shadow backdrop-blur sm:block">
