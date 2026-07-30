@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X, ClipboardList, LayoutGrid, BarChart3 } from "lucide-react";
+import { Menu, X, ClipboardList, LayoutGrid, BarChart3, LogOut } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { FeedbackButton } from "@/components/feedback-button";
-import { getStudentProfile } from "@/lib/auth";
+import { getStudentProfile, clearStudentProfile } from "@/lib/auth";
 import type { Pin } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,13 @@ export function MapPanel({ pins }: { pins: Pin[] }) {
     { label: "Fixed", value: approved.filter((p) => p.level === "Fixed").length, dot: "bg-green-500" },
   ];
   const pendingSync = pins.filter((p) => !p.synced).length;
+
+  function handleLogout() {
+    clearStudentProfile();
+    // Full reload so the home page re-checks the profile and shows the sign-in
+    // screen (where staff can enter the PIN as the password).
+    window.location.assign("/");
+  }
 
   return (
     <>
@@ -132,6 +139,16 @@ export function MapPanel({ pins }: { pins: Pin[] }) {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="border-t border-slate-800 p-3">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </button>
         </div>
       </div>
     </>
