@@ -142,6 +142,11 @@ export default function AdminOverviewPage() {
                       <p className="font-medium text-slate-300">{pin.reporterName}</p>
                       <p>{pin.reporterSection}</p>
                       <p className="truncate">{pin.reporterEmail}</p>
+                      {pin.deviceId && (
+                        <p className="truncate font-mono text-[11px] text-slate-500">
+                          Device {pin.deviceId.slice(0, 8)}
+                        </p>
+                      )}
                       {formatDate(pin.createdAt) && (
                         <p className="mt-1 text-slate-500">
                           Submitted {formatDate(pin.createdAt)}

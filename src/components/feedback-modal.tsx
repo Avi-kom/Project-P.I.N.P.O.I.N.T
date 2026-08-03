@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { submitFeedback } from "@/lib/feedback";
 import { getStudentProfile } from "@/lib/auth";
+import { getDeviceId } from "@/lib/device";
 
 interface FeedbackModalProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function FeedbackModal({ open, onOpenChange, role }: FeedbackModalProps) 
       role,
       name: profile?.name ?? (role === "admin" ? "Staff" : "Anonymous"),
       email: profile?.email ?? "unknown",
+      device_id: getDeviceId(),
     });
     setState("done");
     setTimeout(() => {

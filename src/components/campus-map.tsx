@@ -32,6 +32,17 @@ const ASPECT = CAMPUS_ASPECT;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
+// "Fixed" reports drop off the student map this many days after they were filed
+// (change to tidy the map faster/slower). They remain in the admin panel.
+const FIXED_RETENTION_DAYS = 30;
+
+function isExpiredFixed(pin: Pin): boolean {
+  if (pin.level !== "Fixed" || !pin.createdAt) return false;
+  const created = new Date(pin.createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  return Date.now() - created > FIXED_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+}
+
 function findZone(zones: CampusZone[], xPercent: number, yPercent: number) {
   return zones.find(
     (z) =>
@@ -118,6 +129,7 @@ export function CampusMap({ pins, onMapClick }: CampusMapProps) {
 
   const visiblePins = pins.filter((pin) => {
     if (pin.status !== "Approved") return false;
+    if (isExpiredFixed(pin)) return false;
     if (activeShsFloor !== 1) return pin.floorId === activeShsFloor;
     if (pin.building === "Open Field") return true;
     return pin.floorId === 1;

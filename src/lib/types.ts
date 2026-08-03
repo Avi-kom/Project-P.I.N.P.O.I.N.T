@@ -18,4 +18,5 @@ export interface Pin {
   reporterEmail: string;
   exactLocation?: string;
   createdAt?: string;
+  deviceId?: string;
 }

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import type { FloorId, Pin } from "@/lib/types";
 import { getStudentProfile } from "@/lib/auth";
+import { getDeviceId } from "@/lib/device";
 import { uploadReportPhoto } from "@/lib/photo-upload";
 
 interface ReportIssueModalProps {
@@ -100,6 +101,7 @@ export function ReportIssueModal({
       reporterEmail: profile?.email ?? "unknown",
       exactLocation: exactLocation.trim() || undefined,
       createdAt: new Date().toISOString(),
+      deviceId: getDeviceId(),
     };
 
     onSubmit(newPin);

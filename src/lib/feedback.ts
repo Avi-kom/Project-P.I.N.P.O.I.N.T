@@ -6,6 +6,7 @@ export interface Feedback {
   role: "student" | "admin";
   name: string;
   email: string;
+  device_id?: string;
   created_at?: string;
 }
 
@@ -32,13 +33,19 @@ export async function submitFeedback(entry: Feedback): Promise<boolean> {
     queueLocally(entry);
     return false;
   }
-  const { error } = await supabase.from("feedback").insert({
+  const base = {
     id: entry.id,
     message: entry.message,
     role: entry.role,
     name: entry.name,
     email: entry.email,
-  });
+  };
+  let { error } = await supabase.from("feedback").insert({ ...base, device_id: entry.device_id });
+  // If the device_id column hasn't been added yet, fall back to the base insert
+  // so feedback is never lost.
+  if (error) {
+    ({ error } = await supabase.from("feedback").insert(base));
+  }
   if (error) {
     queueLocally(entry);
     return false;

@@ -97,10 +97,17 @@ export default function AdminFeedbackPage() {
                   {f.message}
                 </p>
                 <div className="flex items-center justify-between gap-2 border-t border-slate-800 pt-2">
-                  <p className="min-w-0 truncate text-xs text-slate-500">
-                    {f.name}
-                    {f.email && f.email !== "unknown" ? ` · ${f.email}` : ""}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-slate-500">
+                      {f.name}
+                      {f.email && f.email !== "unknown" ? ` · ${f.email}` : ""}
+                    </p>
+                    {f.device_id && (
+                      <p className="truncate font-mono text-[11px] text-slate-600">
+                        Device {f.device_id.slice(0, 8)}
+                      </p>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleDelete(f.id)}
                     disabled={deletingId === f.id}

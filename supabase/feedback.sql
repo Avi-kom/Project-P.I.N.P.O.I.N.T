@@ -10,6 +10,9 @@ create table if not exists public.feedback (
   created_at timestamptz not null default now()
 );
 
+-- Device id of the submitter's browser (a clue for spotting repeat trolls).
+alter table public.feedback add column if not exists device_id text;
+
 alter table public.feedback enable row level security;
 
 -- Prototype-only policies: anyone with the anon key can submit and read.

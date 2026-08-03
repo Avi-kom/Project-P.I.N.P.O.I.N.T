@@ -17,8 +17,9 @@ create table if not exists public.pins (
   created_at timestamptz not null default now()
 );
 
--- If the pins table already existed before this column was added, run this too:
+-- If the pins table already existed before these columns were added, run these:
 alter table public.pins add column if not exists exact_location text;
+alter table public.pins add column if not exists device_id text;
 
 alter table public.pins enable row level security;
 

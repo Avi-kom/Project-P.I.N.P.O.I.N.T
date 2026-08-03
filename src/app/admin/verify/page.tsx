@@ -94,6 +94,11 @@ export default function VerifyReportsPage() {
                         <p className="font-medium">{pin.reporterName}</p>
                         <p className="text-xs text-slate-500">{pin.reporterSection}</p>
                         <p className="text-xs text-slate-500">{pin.reporterEmail}</p>
+                        {pin.deviceId && (
+                          <p className="font-mono text-[11px] text-slate-500">
+                            Device {pin.deviceId.slice(0, 8)}
+                          </p>
+                        )}
                         {formatDate(pin.createdAt) && (
                           <p className="mt-1 text-xs text-slate-500">
                             Submitted {formatDate(pin.createdAt)}
@@ -188,6 +193,11 @@ function VerifyCard({
           <p className="font-medium text-slate-300">{pin.reporterName}</p>
           <p>{pin.reporterSection}</p>
           <p>{pin.reporterEmail}</p>
+          {pin.deviceId && (
+            <p className="font-mono text-[11px] text-slate-500">
+              Device {pin.deviceId.slice(0, 8)}
+            </p>
+          )}
           {formatDate(pin.createdAt) && (
             <p className="mt-1 text-slate-500">Submitted {formatDate(pin.createdAt)}</p>
           )}

@@ -15,6 +15,7 @@ interface PinRow {
   reporter_section: string;
   reporter_email: string;
   exact_location?: string | null;
+  device_id?: string | null;
   created_at?: string;
 }
 
@@ -33,6 +34,7 @@ function rowToPin(row: PinRow): Pin {
     reporterSection: row.reporter_section,
     reporterEmail: row.reporter_email,
     exactLocation: row.exact_location ?? undefined,
+    deviceId: row.device_id ?? undefined,
     createdAt: row.created_at,
     synced: true,
   };
@@ -53,6 +55,7 @@ function pinToRow(pin: Pin): PinRow {
     reporter_section: pin.reporterSection,
     reporter_email: pin.reporterEmail,
     exact_location: pin.exactLocation ?? null,
+    device_id: pin.deviceId ?? null,
   };
 }
 
@@ -68,7 +71,16 @@ export async function fetchRemotePins(): Promise<Pin[] | null> {
 
 export async function insertRemotePin(pin: Pin): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from("pins").insert(pinToRow(pin));
+  const row = pinToRow(pin);
+  let { error } = await supabase.from("pins").insert(row);
+  if (error) {
+    // Optional columns (exact_location / device_id) may not exist yet in the
+    // deployed schema — retry without them so the report still syncs.
+    const { exact_location, device_id, ...base } = row;
+    void exact_location;
+    void device_id;
+    ({ error } = await supabase.from("pins").insert(base));
+  }
   return !error;
 }
 
