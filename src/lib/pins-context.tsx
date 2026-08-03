@@ -15,6 +15,7 @@ import type { Pin, PinStatus } from "./types";
 import { useOnlineStatus } from "./use-online-status";
 import { isSupabaseConfigured } from "./supabase";
 import { fetchRemotePins, insertRemotePin, updateRemotePinStatus } from "./pins-remote";
+import { ADMIN_PIN } from "./admin-auth";
 
 const STORAGE_KEY = "pinpoint_pins_v1";
 const FAKE_UPLOAD_DELAY_MS = 1500;
@@ -23,6 +24,7 @@ interface PinsContextValue {
   pins: Pin[];
   addPin: (pin: Pin) => void;
   setPinStatus: (id: string, status: PinStatus) => void;
+  removePin: (id: string) => void;
   isOnline: boolean;
   pendingSyncCount: number;
 }
@@ -121,6 +123,18 @@ export function PinsProvider({ children }: { children: ReactNode }) {
     if (isSupabaseConfigured) updateRemotePinStatus(id, status);
   }, []);
 
+  const removePin = useCallback((id: string) => {
+    setPins((prev) => prev.filter((p) => p.id !== id));
+    if (isSupabaseConfigured) {
+      // Delete from the cloud via the PIN-guarded server route (best-effort).
+      fetch("/api/pins", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, pin: ADMIN_PIN }),
+      }).catch(() => {});
+    }
+  }, []);
+
   // When connectivity comes back, flush anything still unsynced.
   useEffect(() => {
     if (!hydrated || !isOnline) return;
@@ -133,8 +147,8 @@ export function PinsProvider({ children }: { children: ReactNode }) {
   const pendingSyncCount = useMemo(() => pins.filter((p) => !p.synced).length, [pins]);
 
   const value = useMemo(
-    () => ({ pins, addPin, setPinStatus, isOnline, pendingSyncCount }),
-    [pins, addPin, setPinStatus, isOnline, pendingSyncCount]
+    () => ({ pins, addPin, setPinStatus, removePin, isOnline, pendingSyncCount }),
+    [pins, addPin, setPinStatus, removePin, isOnline, pendingSyncCount]
   );
 
   return <PinsContext.Provider value={value}>{children}</PinsContext.Provider>;

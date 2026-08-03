@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Check, X, Trash2 } from "lucide-react";
 import { usePins } from "@/lib/pins-context";
 import { riskLabel, riskBadgeClass } from "@/lib/risk";
 import { isShsBuildingLabel } from "@/lib/campus-layout";
@@ -27,8 +27,12 @@ function formatDate(iso?: string): string | null {
 }
 
 export default function VerifyReportsPage() {
-  const { pins, setPinStatus } = usePins();
+  const { pins, setPinStatus, removePin } = usePins();
   const pendingPins = pins.filter((p) => p.status === "Pending");
+
+  function handleDelete(id: string) {
+    if (window.confirm("Delete this report? This can't be undone.")) removePin(id);
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +52,12 @@ export default function VerifyReportsPage() {
           {/* Mobile: stacked cards */}
           <div className="grid gap-3 md:hidden">
             {pendingPins.map((pin) => (
-              <VerifyCard key={pin.id} pin={pin} setPinStatus={setPinStatus} />
+              <VerifyCard
+                key={pin.id}
+                pin={pin}
+                setPinStatus={setPinStatus}
+                onDelete={() => handleDelete(pin.id)}
+              />
             ))}
           </div>
 
@@ -106,7 +115,7 @@ export default function VerifyReportsPage() {
                         {isShsBuildingLabel(pin.building) ? `Floor ${pin.floorId}` : "—"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-wrap justify-end gap-2">
                           <Button size="sm" onClick={() => setPinStatus(pin.id, "Approved")}>
                             <Check className="mr-1 h-4 w-4" />
                             Approve
@@ -118,6 +127,14 @@ export default function VerifyReportsPage() {
                           >
                             <X className="mr-1 h-4 w-4" />
                             Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(pin.id)}
+                            aria-label="Delete report"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -136,9 +153,11 @@ export default function VerifyReportsPage() {
 function VerifyCard({
   pin,
   setPinStatus,
+  onDelete,
 }: {
   pin: Pin;
   setPinStatus: (id: string, status: Pin["status"]) => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-800 bg-[#0d152f]">
@@ -190,6 +209,9 @@ function VerifyCard({
           >
             <X className="mr-1 h-4 w-4" />
             Reject
+          </Button>
+          <Button size="sm" variant="outline" onClick={onDelete} aria-label="Delete report">
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>

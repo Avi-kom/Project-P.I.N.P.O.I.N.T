@@ -6,7 +6,7 @@ import { Mail, User, Users, Lock } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isValidEmail, setStudentProfile } from "@/lib/auth";
+import { isValidEmail, setStudentProfile, getStudentProfile } from "@/lib/auth";
 import { registerStudent, verifyStudent } from "@/lib/students";
 import { isStaff, registerStaff } from "@/lib/staff-remote";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -72,6 +72,11 @@ export function EntryGate({ onComplete }: EntryGateProps) {
       setBusy(true);
       await registerStaff(email.trim(), password);
       setBusy(false);
+      // Give the admin a student-side identity so "Student View" doesn't
+      // re-prompt a login (they signed in with the PIN, not a student account).
+      if (!getStudentProfile()) {
+        setStudentProfile({ email: email.trim(), name: "Staff", section: "Staff" });
+      }
       goAdmin();
       return;
     }
@@ -87,10 +92,13 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     if (res.ok) {
       const staff = await isStaff(email);
       setBusy(false);
+      // Keep a student profile either way so Student View works without a
+      // re-login; staff additionally go to the admin panel.
+      setStudentProfile({ email: email.trim(), name: res.name, section: res.section });
       if (staff) {
         goAdmin();
       } else {
-        finishStudent({ email: email.trim(), name: res.name, section: res.section });
+        onComplete();
       }
       return;
     }

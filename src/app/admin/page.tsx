@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,8 +22,12 @@ function formatDate(iso?: string): string | null {
 }
 
 export default function AdminOverviewPage() {
-  const { pins } = usePins();
+  const { pins, removePin } = usePins();
   const [activeLevel, setActiveLevel] = useState<1 | 2 | 3 | null>(null);
+
+  function handleDelete(id: string) {
+    if (window.confirm("Delete this report? This can't be undone.")) removePin(id);
+  }
 
   const pending = pins.filter((p) => p.status === "Pending").length;
   const approved = pins.filter((p) => p.status === "Approved").length;
@@ -143,6 +148,13 @@ export default function AdminOverviewPage() {
                         </p>
                       )}
                     </div>
+                    <button
+                      onClick={() => handleDelete(pin.id)}
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
                   </CardContent>
                 </Card>
               ))
