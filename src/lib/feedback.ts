@@ -55,3 +55,18 @@ export async function fetchFeedback(): Promise<Feedback[] | null> {
   if (error || !data) return null;
   return data as Feedback[];
 }
+
+// Deletes a feedback entry via the PIN-guarded server route. Returns true on
+// success.
+export async function deleteFeedback(id: string, pin: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, pin }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

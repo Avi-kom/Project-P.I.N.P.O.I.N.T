@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, User, ShieldCheck } from "lucide-react";
+import { MessageSquare, User, ShieldCheck, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeedbackButton } from "@/components/feedback-button";
-import { fetchFeedback, type Feedback } from "@/lib/feedback";
+import { fetchFeedback, deleteFeedback, type Feedback } from "@/lib/feedback";
+import { ADMIN_PIN } from "@/lib/admin-auth";
 
 export default function AdminFeedbackPage() {
   const [items, setItems] = useState<Feedback[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,6 +25,18 @@ export default function AdminFeedbackPage() {
       cancelled = true;
     };
   }, []);
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("Delete this feedback? This can't be undone.")) return;
+    setDeletingId(id);
+    const ok = await deleteFeedback(id, ADMIN_PIN);
+    setDeletingId(null);
+    if (ok) {
+      setItems((prev) => (prev ? prev.filter((f) => f.id !== id) : prev));
+    } else {
+      window.alert("Couldn't delete that feedback. Try again.");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -82,10 +96,21 @@ export default function AdminFeedbackPage() {
                   <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                   {f.message}
                 </p>
-                <p className="border-t border-slate-800 pt-2 text-xs text-slate-500">
-                  {f.name}
-                  {f.email && f.email !== "unknown" ? ` · ${f.email}` : ""}
-                </p>
+                <div className="flex items-center justify-between gap-2 border-t border-slate-800 pt-2">
+                  <p className="min-w-0 truncate text-xs text-slate-500">
+                    {f.name}
+                    {f.email && f.email !== "unknown" ? ` · ${f.email}` : ""}
+                  </p>
+                  <button
+                    onClick={() => handleDelete(f.id)}
+                    disabled={deletingId === f.id}
+                    aria-label="Delete feedback"
+                    className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {deletingId === f.id ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
               </CardContent>
             </Card>
           ))}
