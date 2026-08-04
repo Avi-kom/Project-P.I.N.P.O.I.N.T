@@ -16,12 +16,27 @@ Dashboard → **Authentication → URL Configuration**
   - `https://your-app.vercel.app`
   - `http://localhost:3000` (so it works in local dev)
 
-## 3. (Important) Email sending limits
+## 3. (Important) Fix the email limit — use Gmail as the sender
 Supabase's built-in email sender is **rate-limited to only a few emails per
-hour** and often lands in spam — fine for testing with one or two accounts, but
-**not** for a whole class signing up at once. For real use, configure your own
-SMTP under **Authentication → Emails → SMTP Settings** (e.g. Gmail SMTP, Resend,
-SendGrid).
+hour** (you'll see "email rate limit reached"). To send to a whole class, point
+Supabase at a Gmail account (≈500 emails/day, sends to anyone):
+
+1. Pick/create a Gmail to send from (e.g. the project's Gmail).
+2. Turn on **2-Step Verification** for that Google account
+   (myaccount.google.com → Security).
+3. Create an **App Password**: Google Account → Security → **App passwords** →
+   app "Mail" → copy the 16-character password.
+4. In Supabase: **Authentication → Emails → SMTP Settings** → enable **Custom SMTP**:
+   - Host: `smtp.gmail.com`
+   - Port: `465` (or `587`)
+   - Username: your full Gmail address
+   - Password: the 16-char **app password** (not your normal password)
+   - Sender email: your Gmail address
+   - Sender name: `P.I.N.P.O.I.N.T.`
+5. Save. Keep **"Confirm email" ON** (step 1) and the URLs set (step 2).
+6. Test with a **real** email address; check the spam folder the first time.
+
+(Resend/SendGrid also work if you have a domain. Gmail is easiest without one.)
 
 ## How it behaves in the app
 - **New student:** enters email + name + section + password → gets a
