@@ -1,4 +1,12 @@
 import { supabase } from "./supabase";
+import type { AuthError } from "@supabase/supabase-js";
+
+function isRateLimit(error: AuthError): boolean {
+  return (
+    error.status === 429 ||
+    /rate limit|too many|limit reached|over.?email.?send/i.test(error.message)
+  );
+}
 
 // Real email-verified accounts via Supabase Auth. signUp sends a confirmation
 // email (when "Confirm email" is enabled in the Supabase dashboard); the user
@@ -26,6 +34,14 @@ export async function signUpStudent(
   if (error) {
     if (/already|exists|registered/i.test(error.message)) {
       return { ok: false, reason: "exists" };
+    }
+    if (isRateLimit(error)) {
+      return {
+        ok: false,
+        reason: "error",
+        message:
+          "Too many sign-ups right now (email limit). Please wait a few minutes and try again.",
+      };
     }
     return { ok: false, reason: "error", message: error.message };
   }
