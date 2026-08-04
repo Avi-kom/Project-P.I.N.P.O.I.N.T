@@ -6,6 +6,7 @@ import { Menu, X, ClipboardList, LayoutGrid, BarChart3, LogOut } from "lucide-re
 import { Logo } from "@/components/logo";
 import { FeedbackButton } from "@/components/feedback-button";
 import { getStudentProfile, clearStudentProfile } from "@/lib/auth";
+import { signOutStudent } from "@/lib/student-auth";
 import type { Pin } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,8 @@ export function MapPanel({ pins }: { pins: Pin[] }) {
   ];
   const pendingSync = pins.filter((p) => !p.synced).length;
 
-  function handleLogout() {
+  async function handleLogout() {
+    await signOutStudent();
     clearStudentProfile();
     // Full reload so the home page re-checks the profile and shows the sign-in
     // screen (where staff can enter the PIN as the password).

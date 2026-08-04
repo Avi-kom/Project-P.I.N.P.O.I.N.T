@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, User, Users, Lock } from "lucide-react";
+import { Mail, User, Users, Lock, MailCheck } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isValidEmail, setStudentProfile, getStudentProfile } from "@/lib/auth";
-import { registerStudent, verifyStudent } from "@/lib/students";
+import { signUpStudent, signInStudent, resendConfirmation } from "@/lib/student-auth";
 import { isStaff, registerStaff } from "@/lib/staff-remote";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { ADMIN_PIN, setAdminAuthed } from "@/lib/admin-auth";
@@ -18,12 +18,12 @@ interface EntryGateProps {
 
 // One sign-in for everyone. Enter email, then a password:
 //  • the admin PIN → admin panel (and the email is saved as staff)
-//  • a staff email's own password → admin panel
-//  • a student's own password → the map
-// "register" creates a new student; "details" is the no-Supabase fallback.
-type Step = "email" | "password" | "register" | "details";
+//  • a verified student's email + password → the map
+// "register" creates a new account and emails a confirmation link; "confirm"
+// tells them to click it; "details" is the no-Supabase fallback.
+type Step = "email" | "password" | "register" | "confirm" | "details";
 
-const MIN_PASSWORD = 4;
+const MIN_PASSWORD = 6; // Supabase Auth requires at least 6
 
 export function EntryGate({ onComplete }: EntryGateProps) {
   const router = useRouter();
@@ -35,14 +35,10 @@ export function EntryGate({ onComplete }: EntryGateProps) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const inputClass =
     "border-slate-700 bg-slate-800 pl-9 text-white placeholder:text-slate-500";
-
-  function finishStudent(profile: { email: string; name: string; section: string }) {
-    setStudentProfile(profile);
-    onComplete();
-  }
 
   function goAdmin() {
     setAdminAuthed(true);
@@ -72,8 +68,6 @@ export function EntryGate({ onComplete }: EntryGateProps) {
       setBusy(true);
       await registerStaff(email.trim(), password);
       setBusy(false);
-      // Give the admin a student-side identity so "Student View" doesn't
-      // re-prompt a login (they signed in with the PIN, not a student account).
       if (!getStudentProfile()) {
         setStudentProfile({ email: email.trim(), name: "Staff", section: "Staff" });
       }
@@ -88,26 +82,23 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     }
 
     setBusy(true);
-    const res = await verifyStudent(email, password);
+    const res = await signInStudent(email, password);
     if (res.ok) {
       const staff = await isStaff(email);
       setBusy(false);
-      // Keep a student profile either way so Student View works without a
-      // re-login; staff additionally go to the admin panel.
-      setStudentProfile({ email: email.trim(), name: res.name, section: res.section });
-      if (staff) {
-        goAdmin();
-      } else {
-        onComplete();
-      }
+      setStudentProfile({ email: res.email, name: res.name, section: res.section });
+      if (staff) goAdmin();
+      else onComplete();
       return;
     }
     setBusy(false);
-    setError(
-      res.reason === "wrong"
-        ? "Incorrect password. New here? Create an account below."
-        : "Couldn't reach the server. Try again."
-    );
+    if (res.reason === "unconfirmed") {
+      setStep("confirm");
+    } else if (res.reason === "wrong") {
+      setError("Incorrect password. New here? Create an account below.");
+    } else {
+      setError(res.message || "Couldn't sign in. Try again.");
+    }
   }
 
   async function handleRegisterSubmit(e: React.FormEvent) {
@@ -126,10 +117,16 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     }
     setError("");
     setBusy(true);
-    const res = await registerStudent(email.trim(), name.trim(), section.trim(), password);
+    const res = await signUpStudent(email.trim(), password, name.trim(), section.trim());
     setBusy(false);
     if (res.ok) {
-      finishStudent({ email: email.trim(), name: name.trim(), section: section.trim() });
+      if (res.needsConfirm) {
+        setStep("confirm");
+      } else {
+        // Email confirmation is off in the project — treat as signed in.
+        setStudentProfile({ email: email.trim(), name: name.trim(), section: section.trim() });
+        onComplete();
+      }
       return;
     }
     if (res.reason === "exists") {
@@ -138,7 +135,15 @@ export function EntryGate({ onComplete }: EntryGateProps) {
       setError("That email is already registered — enter your password.");
       return;
     }
-    setError("Couldn't create your account. Try again.");
+    setError(res.message || "Couldn't create your account. Try again.");
+  }
+
+  async function handleResend() {
+    setBusy(true);
+    const ok = await resendConfirmation(email.trim());
+    setBusy(false);
+    setResent(ok);
+    if (!ok) setError("Couldn't resend. Try again in a bit.");
   }
 
   // No-Supabase fallback (local dev): name + section, no password.
@@ -148,7 +153,8 @@ export function EntryGate({ onComplete }: EntryGateProps) {
       setError("Please fill in both fields.");
       return;
     }
-    finishStudent({ email: email.trim(), name: name.trim(), section: section.trim() });
+    setStudentProfile({ email: email.trim(), name: name.trim(), section: section.trim() });
+    onComplete();
   }
 
   function backToEmail() {
@@ -156,6 +162,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
     setPassword("");
     setConfirm("");
     setError("");
+    setResent(false);
   }
 
   return (
@@ -233,11 +240,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
               >
                 New student? Create an account
               </button>
-              <button
-                type="button"
-                onClick={backToEmail}
-                className="text-slate-500 hover:text-slate-300"
-              >
+              <button type="button" onClick={backToEmail} className="text-slate-500 hover:text-slate-300">
                 Change email
               </button>
             </div>
@@ -291,7 +294,7 @@ export function EntryGate({ onComplete }: EntryGateProps) {
                     setPassword(e.target.value);
                     setError("");
                   }}
-                  placeholder="Create a password"
+                  placeholder="At least 6 characters"
                   className={inputClass}
                 />
               </div>
@@ -314,16 +317,50 @@ export function EntryGate({ onComplete }: EntryGateProps) {
               {error && <p className="text-xs text-red-400">{error}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Creating…" : "Create account & enter"}
+              {busy ? "Creating…" : "Create account"}
             </Button>
-            <button
-              type="button"
-              onClick={backToEmail}
-              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
-            >
+            <button type="button" onClick={backToEmail} className="w-full text-center text-xs text-slate-500 hover:text-slate-300">
               Change email
             </button>
           </form>
+        )}
+
+        {step === "confirm" && (
+          <div className="space-y-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <MailCheck className="h-10 w-10 text-amber-400" />
+              <p className="text-sm font-medium text-white">Confirm your email</p>
+              <p className="text-sm text-slate-400">
+                We sent a confirmation link to{" "}
+                <span className="text-slate-200">{email}</span>. Open it, then come back and
+                sign in.
+              </p>
+              {resent && <p className="text-xs text-green-400">Confirmation email re-sent.</p>}
+              {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setStep("password");
+                setError("");
+              }}
+            >
+              I&apos;ve confirmed — sign in
+            </Button>
+            <div className="flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={busy}
+                className="text-amber-400 hover:text-amber-300 disabled:opacity-50"
+              >
+                {busy ? "Resending…" : "Resend email"}
+              </button>
+              <button type="button" onClick={backToEmail} className="text-slate-500 hover:text-slate-300">
+                Use a different email
+              </button>
+            </div>
+          </div>
         )}
 
         {step === "details" && (
