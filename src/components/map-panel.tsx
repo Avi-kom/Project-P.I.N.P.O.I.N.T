@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu, X, ClipboardList, LayoutGrid, BarChart3, LogOut } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { FeedbackButton } from "@/components/feedback-button";
-import { getStudentProfile, clearStudentProfile } from "@/lib/auth";
+import { getStudentProfile } from "@/lib/auth";
 import { signOutStudent } from "@/lib/student-auth";
 import type { Pin } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -37,9 +37,23 @@ export function MapPanel({ pins }: { pins: Pin[] }) {
   ];
   const pendingSync = pins.filter((p) => !p.synced).length;
 
-  async function handleLogout() {
-    await signOutStudent();
-    clearStudentProfile();
+  function handleLogout() {
+    // Sign out of Supabase Auth (best-effort, don't block the reload on it).
+    void signOutStudent();
+    // Wipe this account's cached data so signing in with a different account
+    // starts clean — no previous account's profile, reports, or queued feedback
+    // bleed over. The device id is kept on purpose (it tracks the device, not
+    // the account). "sb-*" are Supabase Auth session tokens.
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if ((k.startsWith("pinpoint_") && k !== "pinpoint_device_id") || k.startsWith("sb-")) {
+          localStorage.removeItem(k);
+        }
+      });
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
     // Full reload so the home page re-checks the profile and shows the sign-in
     // screen (where staff can enter the PIN as the password).
     window.location.assign("/");

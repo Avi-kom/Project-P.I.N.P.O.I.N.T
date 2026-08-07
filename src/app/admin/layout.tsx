@@ -57,7 +57,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   function handleSignOut() {
     setAdminAuthed(false);
-    router.push("/");
+    // Also clear the cached student-side data so the next account starts clean.
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if ((k.startsWith("pinpoint_") && k !== "pinpoint_device_id") || k.startsWith("sb-")) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch {
+      /* ignore */
+    }
+    window.location.assign("/");
   }
 
   return (
